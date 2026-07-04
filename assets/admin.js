@@ -41,7 +41,11 @@
 
 				var msg = $('#user_expiry_clear_msg');
 				if (msg.length) {
-					msg.text(expiryflow_admin.expiry_cleared_text);
+					var clearedText = 'Expiry date cleared.';
+					if (typeof expiryflow_admin !== 'undefined' && expiryflow_admin.expiry_cleared_text) {
+						clearedText = expiryflow_admin.expiry_cleared_text;
+					}
+					msg.text(clearedText);
 					setTimeout(function(){
 						msg.text('');
 					}, 2000);

@@ -48,7 +48,7 @@ class Core {
 	 */
 	private function define_constants() {
 		if ( ! defined( 'EXPIRYFLOW_VERSION' ) ) {
-			define( 'EXPIRYFLOW_VERSION', '1.0.2' );
+			define( 'EXPIRYFLOW_VERSION', '1.0.3' );
 		}
 		if ( ! defined( 'EXPIRYFLOW_PLUGIN_DIR' ) ) {
 			define( 'EXPIRYFLOW_PLUGIN_DIR', plugin_dir_path( __DIR__ ) );
@@ -79,9 +79,6 @@ class Core {
 	 * Initialize plugin components.
 	 */
 	private function init() {
-		// Initialize Utils.
-		new Utils\Helpers();
-
 		// Initialize Authentication.
 		new Auth\Authentication();
 

@@ -131,9 +131,9 @@ final class Helpers {
 	}
 
 	/**
-	 * Get current timestamp in WordPress timezone.
+	 * Get current Unix timestamp in UTC.
 	 *
-	 * @return int Current timestamp in WordPress timezone.
+	 * @return int Current Unix timestamp in UTC.
 	 */
 	public static function get_current_timestamp(): int {
 		return time();

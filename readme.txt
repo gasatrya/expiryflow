@@ -2,8 +2,8 @@
 Contributors: gasatrya
 Tags: user management, membership, expiry, temporary access, auto-delete
 Requires at least: 6.4
-Tested up to: 6.9
-Stable tag: 1.0.2
+Tested up to: 7.0
+Stable tag: 1.0.3
 Requires PHP: 8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -71,7 +71,7 @@ No. For security reasons, Administrator accounts are intentionally exempt from a
 
 = What happens when a user expires? =
 
-As soon as the expiry date passes, the user is blocked from logging in. If they have an active session, they will be logged out within one hour (due to the forced 1-hour cookie expiration for temporary users).
+As soon as the expiry date passes, the user is blocked from logging in. If they have an active session, ExpiryFlow rechecks their status during requests and signs them out when expired.
 
 = How does the grace period work? =
 
@@ -93,6 +93,13 @@ No. The plugin is lightweight, uses no external dependencies, and its heaviest t
 
 == Changelog ==
 
+= 1.0.3 =
+*   Security: Strengthened auto-deletion loopback handling with atomic cron locking and safer token cleanup.
+*   Security: Added defense-in-depth checks for authenticated deletion requests and deletion reassignment targets.
+*   Fixed: Expired logged-in users are now revalidated during requests.
+*   Fixed: Users with far-future expiry dates no longer receive unnecessarily short auth cookies.
+*   Fixed: Improved admin UI robustness for missing localized script data and edge-case expiry display.
+
 = 1.0.2 =
 *   Branded: Renamed plugin to ExpiryFlow.
 *   Standardized: Namespaces, constants, and prefixes updated to 'ExpiryFlow'.
@@ -112,6 +119,9 @@ No. The plugin is lightweight, uses no external dependencies, and its heaviest t
 *   Modern namespaced architecture (PHP 8).
 
 == Upgrade Notice ==
+
+= 1.0.3 =
+Security and reliability update for auto-deletion, active-session expiry enforcement, and admin UI edge cases. Recommended for all users.
 
 = 1.0.2 =
 Rebranding update. All functionality remains the same but under the new ExpiryFlow brand.

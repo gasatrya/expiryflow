@@ -39,7 +39,7 @@ class AutoDeletion {
 	 * @param int $user_id User ID.
 	 * @return bool
 	 */
-	public function should_auto_delete_user( int $user_id ): bool {
+	public static function should_auto_delete_user( int $user_id ): bool {
 		$auto_delete = get_user_meta( $user_id, EXPIRYFLOW_USER_AUTO_DELETE, true );
 		$expiry_date = get_user_meta( $user_id, EXPIRYFLOW_USER_EXPIRY_DATE, true );
 
@@ -55,6 +55,10 @@ class AutoDeletion {
 
 		// Check grace period.
 		$expiry_timestamp = Helpers::get_expiry_timestamp( $expiry_date );
+		if ( false === $expiry_timestamp ) {
+			return false;
+		}
+
 		$current_time     = Helpers::get_current_timestamp();
 		$grace_period_end = $expiry_timestamp + ( Helpers::get_grace_period() * DAY_IN_SECONDS );
 
@@ -70,14 +74,12 @@ class AutoDeletion {
 			return;
 		}
 
-		// Prevent race condition: check if auto-deletion is already running.
+		// Prevent concurrent execution with an atomic option-backed lock.
 		$lock_key = 'expiryflow_auto_delete_lock';
-		if ( get_transient( $lock_key ) ) {
+		$lock_ttl = 10 * MINUTE_IN_SECONDS;
+		if ( ! $this->acquire_lock( $lock_key, $lock_ttl ) ) {
 			return;
 		}
-
-		// Set lock for 10 minutes to prevent concurrent execution.
-		set_transient( $lock_key, time(), 10 * MINUTE_IN_SECONDS );
 
 		/**
 		 * Calculate the cutoff date for the grace period.
@@ -114,7 +116,7 @@ class AutoDeletion {
 
 		foreach ( $users as $user_id ) {
 			// Final check to ensure all conditions are met (safety redundancy).
-			if ( $this->should_auto_delete_user( (int) $user_id ) ) {
+			if ( self::should_auto_delete_user( (int) $user_id ) ) {
 				$to_delete[] = (int) $user_id;
 			}
 		}
@@ -123,8 +125,39 @@ class AutoDeletion {
 			$this->trigger_loopback_deletion( $to_delete );
 		}
 
-		// Release the lock.
-		delete_transient( $lock_key );
+		$this->release_lock( $lock_key );
+	}
+
+	/**
+	 * Acquire an option-backed lock.
+	 *
+	 * @param string $lock_key Lock option name.
+	 * @param int    $ttl      Lock time to live in seconds.
+	 * @return bool True if the lock was acquired.
+	 */
+	private function acquire_lock( string $lock_key, int $ttl ): bool {
+		$current_lock = (int) get_option( $lock_key, 0 );
+
+		if ( $current_lock > 0 ) {
+			$lock_age = time() - $current_lock;
+
+			if ( $lock_age < $ttl ) {
+				return false;
+			}
+
+			delete_option( $lock_key );
+		}
+
+		return add_option( $lock_key, (string) time(), '', false );
+	}
+
+	/**
+	 * Release an option-backed lock.
+	 *
+	 * @param string $lock_key Lock option name.
+	 */
+	private function release_lock( string $lock_key ): void {
+		delete_option( $lock_key );
 	}
 
 	/**

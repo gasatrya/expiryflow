@@ -33,6 +33,7 @@ class Authentication {
 	private function setup_hooks(): void {
 		add_filter( 'authenticate', array( $this, 'authenticate_user' ), 30, 3 );
 		add_filter( 'auth_cookie_expiration', array( $this, 'auth_cookie_expiration' ), 10, 3 );
+		add_action( 'init', array( $this, 'enforce_expiry_on_request' ), 20 );
 	}
 
 	/**
@@ -93,6 +94,38 @@ class Authentication {
 	}
 
 	/**
+	 * Enforce expiry on every request for logged-in non-admin users.
+	 *
+	 * The `authenticate` filter only fires at login. Once a session cookie
+	 * is issued it remains valid for its full duration, so revoked or
+	 * date-expired users keep access until the cookie expires. This hook
+	 * re-validates on each front-end/admin request and destroys the session
+	 * if the account is no longer valid.
+	 */
+	public function enforce_expiry_on_request(): void {
+		// Skip non-interactive contexts.
+		if ( ( defined( 'DOING_CRON' ) && DOING_CRON ) || wp_doing_ajax() ) {
+			return;
+		}
+
+		$user_id = get_current_user_id();
+		if ( ! $user_id || Helpers::is_user_admin( $user_id ) ) {
+			return;
+		}
+
+		if ( ! self::is_user_expired( $user_id ) ) {
+			return;
+		}
+
+		wp_logout();
+
+		if ( ! headers_sent() ) {
+			wp_safe_redirect( add_query_arg( 'expired', '1', wp_login_url() ) );
+			exit;
+		}
+	}
+
+	/**
 	 * Set auth cookie expiration for users with expiry dates.
 	 *
 	 * @param int $expiration Expiration time in seconds.
@@ -108,11 +141,20 @@ class Authentication {
 		// Check if user has an expiry date set.
 		$expiry_date = get_user_meta( $user_id, EXPIRYFLOW_USER_EXPIRY_DATE, true );
 
-		if ( ! empty( $expiry_date ) ) {
-			// Set 1-hour expiration for users with expiry dates.
+		if ( empty( $expiry_date ) ) {
+			return $expiration;
+		}
+
+		$expiry_timestamp = Helpers::get_expiry_timestamp( $expiry_date );
+
+		if ( false === $expiry_timestamp ) {
 			return HOUR_IN_SECONDS;
 		}
 
-		return $expiration;
+		if ( ( $expiry_timestamp - Helpers::get_current_timestamp() ) > 7 * DAY_IN_SECONDS ) {
+			return $expiration;
+		}
+
+		return min( $expiration, HOUR_IN_SECONDS );
 	}
 }

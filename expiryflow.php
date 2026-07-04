@@ -11,7 +11,7 @@
  * Plugin Name:       ExpiryFlow
  * Plugin URI:        https://www.ctaflow.com/plugins/expiryflow
  * Description:       Extend WordPress user management with expiration functionality for temporary user accounts. Set expiry dates, enable auto-deletion, and keep your user database clean.
- * Version:           1.0.2
+ * Version:           1.0.3
  * Requires at least: 6.4
  * Requires PHP:      8.0
  * Author:            Ga Satrya

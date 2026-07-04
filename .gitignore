@@ -10,3 +10,7 @@ Thumbs.db
 # WordPress
 *.log
 .git/
+
+.specs
+.sessions
+.artifacts

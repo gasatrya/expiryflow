@@ -13,6 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 use ExpiryFlow\Utils\Helpers;
 use ExpiryFlow\Auth\Authentication;
+use ExpiryFlow\Cron\AutoDeletion;
 use DateTime;
 use WP_User;
 use WP_Error;
@@ -291,13 +292,11 @@ class UserManagement {
 
 		// Save account status (Manual Revocation).
 		// Checkboxes are only present in POST if checked. Use nonce to verify intent to save.
-		if ( isset( $_POST['expiryflow_expiry_nonce'] ) ) {
-			$status = isset( $_POST['user_account_status'] ) && EXPIRYFLOW_STATUS_EXPIRED === $_POST['user_account_status']
-				? EXPIRYFLOW_STATUS_EXPIRED
-				: EXPIRYFLOW_STATUS_ACTIVE;
+		$status = isset( $_POST['user_account_status'] ) && EXPIRYFLOW_STATUS_EXPIRED === $_POST['user_account_status']
+			? EXPIRYFLOW_STATUS_EXPIRED
+			: EXPIRYFLOW_STATUS_ACTIVE;
 
-			update_user_meta( $user_id, EXPIRYFLOW_USER_ACCOUNT_STATUS, $status );
-		}
+		update_user_meta( $user_id, EXPIRYFLOW_USER_ACCOUNT_STATUS, $status );
 
 		// Save expiry date.
 		// If admin checked clear expiry, remove meta regardless of date input.
@@ -448,6 +447,10 @@ class UserManagement {
 			$time_diff = (int) $expiry_timestamp - $current_time;
 			$days      = (int) floor( $time_diff / DAY_IN_SECONDS );
 
+			if ( $days <= 0 ) {
+				return esc_html__( 'Today', 'expiryflow' );
+			}
+
 			/* translators: %s: number of days */
 			return esc_html( sprintf( _n( '%d day', '%d days', $days, 'expiryflow' ), $days ) );
 		}
@@ -481,8 +484,13 @@ class UserManagement {
 		$order = isset( $_REQUEST['order'] ) && 'desc' === sanitize_text_field( wp_unslash( $_REQUEST['order'] ) ) ? 'DESC' : 'ASC';
 
 		// Sort by expiry date meta (users without expiry will be ordered last).
-		// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required for user sorting functionality.
-		$query->query_vars['meta_query'] = array(
+		// Merge with any existing meta_query rather than overwriting it, so
+		// filters from core or other plugins via pre_get_users are preserved.
+		$existing_meta_query = isset( $query->query_vars['meta_query'] ) ? $query->query_vars['meta_query'] : array();
+		if ( ! is_array( $existing_meta_query ) ) {
+			$existing_meta_query = array();
+		}
+		$existing_meta_query[] = array(
 			'relation' => 'OR',
 			array(
 				'key'     => EXPIRYFLOW_USER_EXPIRY_DATE,
@@ -493,6 +501,8 @@ class UserManagement {
 				'compare' => 'NOT EXISTS',
 			),
 		);
+		// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required for user sorting functionality.
+		$query->query_vars['meta_query'] = $existing_meta_query;
 
 		$query->query_vars['orderby'] = 'meta_value';
 		// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Required for user sorting functionality.
@@ -512,6 +522,16 @@ class UserManagement {
 			wp_send_json_error( 'Invalid token' );
 		}
 
+		// Authenticated requests need delete_users; cron loopback is intentionally unauthenticated.
+		if ( is_user_logged_in() && ! current_user_can( 'delete_users' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+
+		// Defense-in-depth: only accept loopback-origin requests.
+		if ( ! $this->is_loopback_request() ) {
+			wp_send_json_error( 'Forbidden origin' );
+		}
+
 		// Verify user IDs.
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Using custom token for loopback security.
 		$user_ids = isset( $_POST['user_ids'] ) ? array_map( 'intval', (array) $_POST['user_ids'] ) : array();
@@ -519,25 +539,47 @@ class UserManagement {
 			wp_send_json_error( 'No user IDs provided' );
 		}
 
-		// Delete the token to prevent reuse.
-		delete_transient( 'expiryflow_cron_token' );
+		// Find a valid administrator to reassign content to (once per request, not per user).
+		$admin_users = get_users(
+			array(
+				'role'   => 'administrator',
+				'number' => 1,
+				'fields' => 'ID',
+			)
+		);
+		$reassign_id = 0;
+
+		if ( ! empty( $admin_users ) ) {
+			$admin_user = get_userdata( (int) $admin_users[0] );
+
+			if ( $admin_user instanceof WP_User && in_array( 'administrator', (array) $admin_user->roles, true ) ) {
+				$reassign_id = (int) $admin_user->ID;
+			}
+		}
 
 		$results = array();
 
-		foreach ( $user_ids as $user_id ) {
-			// Find a valid administrator to reassign content to.
-			$admin_users = get_users(
-				array(
-					'role'   => 'administrator',
-					'number' => 1,
-					'fields' => 'ID',
-				)
-			);
-			$reassign_id = ! empty( $admin_users ) ? $admin_users[0] : 1;
+		if ( 0 === $reassign_id ) {
+			foreach ( $user_ids as $user_id ) {
+				$results[ $user_id ] = 'failed_no_reassign_admin';
+			}
 
+			// Delete the token after processing to prevent reuse.
+			delete_transient( 'expiryflow_cron_token' );
+
+			wp_send_json_success( $results );
+		}
+
+		foreach ( $user_ids as $user_id ) {
 			// Double check if user is not an admin.
 			if ( Helpers::is_user_admin( $user_id ) ) {
 				$results[ $user_id ] = 'skipped_admin';
+				continue;
+			}
+
+			// Re-validate deletion eligibility (defense-in-depth against stale IDs).
+			if ( ! AutoDeletion::should_auto_delete_user( $user_id ) ) {
+				$results[ $user_id ] = 'skipped_not_eligible';
 				continue;
 			}
 
@@ -546,6 +588,45 @@ class UserManagement {
 			$results[ $user_id ] = $deleted ? 'success' : 'failed';
 		}
 
+		// Delete the token after processing to prevent reuse.
+		delete_transient( 'expiryflow_cron_token' );
+
 		wp_send_json_success( $results );
+	}
+
+	/**
+	 * Determine whether the current request originates from the server itself.
+	 *
+	 * The cron loopback POSTs to admin-ajax.php with no cookies, so the
+	 * nopriv handler is intentionally unauthenticated. This check rejects
+	 * external callers even if the transient token leaks: only localhost,
+	 * private/reserved ranges, or the server's own address are accepted.
+	 *
+	 * @return bool True if the request is a local loopback.
+	 */
+	private function is_loopback_request(): bool {
+		$remote = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+		$remote = filter_var( $remote, FILTER_VALIDATE_IP );
+		if ( ! $remote ) {
+			return false;
+		}
+
+		// IPv4/IPv6 loopback.
+		if ( in_array( $remote, array( '127.0.0.1', '::1' ), true ) ) {
+			return true;
+		}
+
+		// Private/reserved ranges (10.x, 172.16-31.x, 192.168.x, fc00::/7, etc.).
+		if ( false === filter_var( $remote, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
+			return true;
+		}
+
+		// The server's own address.
+		$server_addr = isset( $_SERVER['SERVER_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['SERVER_ADDR'] ) ) : '';
+		if ( $server_addr && $remote === $server_addr ) {
+			return true;
+		}
+
+		return false;
 	}
 }
