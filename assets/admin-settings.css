@@ -1,0 +1,21 @@
+/**
+ * Admin Settings Layout
+ *
+ * @package ExpiryFlow
+ */
+
+.expiryflow-settings-wrapper {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 40px;
+	margin-top: 20px;
+}
+
+.expiryflow-settings-form {
+	flex: 1;
+	min-width: 300px;
+}
+
+.expiryflow-settings-sidebar {
+	flex: 0 0 350px;
+}

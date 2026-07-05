@@ -39,14 +39,14 @@ class Core {
 	 * Constructor.
 	 */
 	private function __construct() {
-		$this->define_constants();
+		self::define_constants();
 		$this->init();
 	}
 
 	/**
 	 * Define plugin constants.
 	 */
-	private function define_constants() {
+	public static function define_constants() {
 		if ( ! defined( 'EXPIRYFLOW_VERSION' ) ) {
 			define( 'EXPIRYFLOW_VERSION', '1.0.3' );
 		}
@@ -61,18 +61,34 @@ class Core {
 		}
 
 		// Define user meta keys.
-		define( 'EXPIRYFLOW_USER_EXPIRY_DATE', '_expiryflow_expiry_date' );
-		define( 'EXPIRYFLOW_USER_ACCOUNT_STATUS', '_expiryflow_account_status' );
-		define( 'EXPIRYFLOW_USER_AUTO_DELETE', '_expiryflow_auto_delete' );
-		define( 'EXPIRYFLOW_USER_GRACE_PERIOD', '_expiryflow_grace_period' );
+		if ( ! defined( 'EXPIRYFLOW_USER_EXPIRY_DATE' ) ) {
+			define( 'EXPIRYFLOW_USER_EXPIRY_DATE', '_expiryflow_expiry_date' );
+		}
+		if ( ! defined( 'EXPIRYFLOW_USER_ACCOUNT_STATUS' ) ) {
+			define( 'EXPIRYFLOW_USER_ACCOUNT_STATUS', '_expiryflow_account_status' );
+		}
+		if ( ! defined( 'EXPIRYFLOW_USER_AUTO_DELETE' ) ) {
+			define( 'EXPIRYFLOW_USER_AUTO_DELETE', '_expiryflow_auto_delete' );
+		}
+		if ( ! defined( 'EXPIRYFLOW_USER_GRACE_PERIOD' ) ) {
+			define( 'EXPIRYFLOW_USER_GRACE_PERIOD', '_expiryflow_grace_period' );
+		}
 
 		// Define account status constants.
-		define( 'EXPIRYFLOW_STATUS_ACTIVE', 'active' );
-		define( 'EXPIRYFLOW_STATUS_EXPIRED', 'expired' );
+		if ( ! defined( 'EXPIRYFLOW_STATUS_ACTIVE' ) ) {
+			define( 'EXPIRYFLOW_STATUS_ACTIVE', 'active' );
+		}
+		if ( ! defined( 'EXPIRYFLOW_STATUS_EXPIRED' ) ) {
+			define( 'EXPIRYFLOW_STATUS_EXPIRED', 'expired' );
+		}
 
 		// Define configurable constants.
-		define( 'EXPIRYFLOW_AUTO_DELETE_BATCH_SIZE', 50 );
-		define( 'EXPIRYFLOW_GRACE_PERIOD_DAYS', 2 );
+		if ( ! defined( 'EXPIRYFLOW_AUTO_DELETE_BATCH_SIZE' ) ) {
+			define( 'EXPIRYFLOW_AUTO_DELETE_BATCH_SIZE', 50 );
+		}
+		if ( ! defined( 'EXPIRYFLOW_GRACE_PERIOD_DAYS' ) ) {
+			define( 'EXPIRYFLOW_GRACE_PERIOD_DAYS', 2 );
+		}
 	}
 
 	/**
@@ -95,23 +111,14 @@ class Core {
 		if ( ! wp_next_scheduled( 'expiryflow_auto_delete_cron' ) ) {
 			wp_schedule_event( time(), 'hourly', 'expiryflow_auto_delete_cron' );
 		}
-
-		// Set up hooks.
-		$this->setup_hooks();
-	}
-
-	/**
-	 * Set up plugin hooks.
-	 */
-	private function setup_hooks() {
-		register_activation_hook( EXPIRYFLOW_BASENAME, array( $this, 'activate' ) );
-		register_deactivation_hook( EXPIRYFLOW_BASENAME, array( $this, 'deactivate' ) );
 	}
 
 	/**
 	 * Plugin activation hook.
 	 */
-	public function activate() {
+	public static function activate() {
+		self::define_constants();
+
 		update_option( 'expiryflow_plugin_version', EXPIRYFLOW_VERSION );
 
 		// Schedule auto-deletion cron job.
@@ -123,7 +130,7 @@ class Core {
 	/**
 	 * Plugin deactivation hook.
 	 */
-	public function deactivate() {
+	public static function deactivate() {
 		delete_option( 'expiryflow_plugin_version' );
 
 		// Remove auto-deletion cron job.

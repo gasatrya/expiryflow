@@ -21,7 +21,7 @@ msgstr ""
 
 #. Plugin URI of the plugin
 #: expiryflow.php
-msgid "https://www.ctaflow.com/plugins/expiryflow"
+msgid "https://gasatrya.com/plugins/expiryflow"
 msgstr ""
 
 #. Description of the plugin
@@ -36,7 +36,7 @@ msgstr ""
 
 #. Author URI of the plugin
 #: expiryflow.php
-msgid "https://www.ctaflow.com/"
+msgid "https://gasatrya.com/"
 msgstr ""
 
 #: includes/Admin/UserManagement.php:59

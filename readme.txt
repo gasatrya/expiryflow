@@ -20,7 +20,7 @@ These "Zombie Accounts" are a major security risk and lead to database bloat ove
 
 Built with a performance-first, object-oriented architecture for modern WordPress sites.
 
-For more information, visit the official plugin page: [ExpiryFlow](https://www.ctaflow.com/plugins/expiryflow/)
+For more information, visit the official plugin page: [ExpiryFlow](https://gasatrya.com/wp-plugins/expiryflow/)
 
 = Who is this for? =
 
@@ -53,7 +53,8 @@ This plugin is built with data minimization in mind. It helps you comply with GD
 
 == More Plugins ==
 
-*   **[ButtonFlow](https://www.ctaflow.com/plugins/buttonflow/)** — The easiest way to create high-converting, beautiful call-to-action buttons in WordPress.
+*   **[ButtonFlow](https://wordpress.org/plugins/buttonflow/)** — The easiest way to create high-converting, beautiful call-to-action buttons in WordPress.
+*   **[UserFlow](https://wordpress.org/plugins/admin-only-dashboard/)** — Remove dashboard access to non-admin users and easily control who can access your WordPress dashboard with simple configuration
 
 == Installation ==
 
