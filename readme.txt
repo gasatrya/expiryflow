@@ -2,8 +2,8 @@
 Contributors: gasatrya
 Tags: user management, membership, expiry, temporary access, auto-delete
 Requires at least: 6.4
-Tested up to: 7.0
-Stable tag: 1.0.3
+Tested up to: 7.1
+Stable tag: 1.0.4
 Requires PHP: 8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -94,6 +94,9 @@ No. The plugin is lightweight, uses no external dependencies, and its heaviest t
 
 == Changelog ==
 
+= 1.0.4 =
+*   Updated WordPress compatibility declaration through version 7.1.
+
 = 1.0.3 =
 *   Security: Strengthened auto-deletion loopback handling with atomic cron locking and safer token cleanup.
 *   Security: Added defense-in-depth checks for authenticated deletion requests and deletion reassignment targets.
@@ -120,6 +123,9 @@ No. The plugin is lightweight, uses no external dependencies, and its heaviest t
 *   Modern namespaced architecture (PHP 8).
 
 == Upgrade Notice ==
+
+= 1.0.4 =
+Updated WordPress compatibility declaration through version 7.1.
 
 = 1.0.3 =
 Security and reliability update for auto-deletion, active-session expiry enforcement, and admin UI edge cases. Recommended for all users.
