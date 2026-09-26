@@ -2,7 +2,7 @@
 # This file is distributed under the GPL v2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: ExpiryFlow 1.0.3\n"
+"Project-Id-Version: ExpiryFlow 1.0.5\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/expiryflow\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -97,6 +97,10 @@ msgstr ""
 
 #: includes/Admin/UserManagement.php:293
 msgid "Expires"
+msgstr ""
+
+#: includes/Admin/UserManagement.php:484
+msgid "Expiring soon (7 days)"
 msgstr ""
 
 #: includes/Admin/UserManagement.php:309

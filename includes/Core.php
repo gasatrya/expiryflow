@@ -48,7 +48,7 @@ class Core {
 	 */
 	public static function define_constants() {
 		if ( ! defined( 'EXPIRYFLOW_VERSION' ) ) {
-			define( 'EXPIRYFLOW_VERSION', '1.0.4' );
+			define( 'EXPIRYFLOW_VERSION', '1.0.5' );
 		}
 		if ( ! defined( 'EXPIRYFLOW_PLUGIN_DIR' ) ) {
 			define( 'EXPIRYFLOW_PLUGIN_DIR', plugin_dir_path( __DIR__ ) );

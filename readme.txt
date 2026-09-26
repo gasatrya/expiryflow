@@ -3,7 +3,7 @@ Contributors: gasatrya
 Tags: user management, membership, expiry, temporary access, auto-delete
 Requires at least: 6.4
 Tested up to: 7.1
-Stable tag: 1.0.4
+Stable tag: 1.0.5
 Requires PHP: 8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -39,6 +39,7 @@ For more information, visit the official plugin page: [ExpiryFlow](https://gasat
 *   **Content Preservation** — When a user is auto-deleted, all their posts and comments are safely reassigned to a site administrator.
 *   **Admin Immunity** — Site administrators are protected from accidental expiration to ensure you never lose access to your own site.
 *   **Clean Admin Interface** — Adds "Status" and "Expires" columns to the Users list with color-coded badges for at-a-glance management.
+*   **Expiring Soon View** — Shows active, non-administrator users expiring across the next seven calendar dates (including today) from the Users screen.
 *   **Developer Friendly** — Namespaced, class-based architecture following PHP 8 standards and WordPress best practices.
 
 = Privacy First =
@@ -94,6 +95,9 @@ No. The plugin is lightweight, uses no external dependencies, and its heaviest t
 
 == Changelog ==
 
+= 1.0.5 =
+*   Added an "Expiring soon (7 days)" view on the Users screen for active, non-administrator accounts expiring within the next seven calendar dates (including today).
+
 = 1.0.4 =
 *   Updated WordPress compatibility declaration through version 7.1.
 
@@ -123,6 +127,9 @@ No. The plugin is lightweight, uses no external dependencies, and its heaviest t
 *   Modern namespaced architecture (PHP 8).
 
 == Upgrade Notice ==
+
+= 1.0.5 =
+Adds an Expiring soon view to the Users screen. No configuration changes required.
 
 = 1.0.4 =
 Updated WordPress compatibility declaration through version 7.1.

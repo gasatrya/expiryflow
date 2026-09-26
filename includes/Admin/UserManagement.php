@@ -49,6 +49,8 @@ class UserManagement {
 		add_filter( 'manage_users_custom_column', array( $this, 'show_expiry_columns' ), 10, 3 );
 		add_filter( 'manage_users_sortable_columns', array( $this, 'make_expiry_status_sortable' ) );
 		add_action( 'pre_get_users', array( $this, 'handle_expiry_status_sorting' ) );
+		add_filter( 'views_users', array( $this, 'add_expiring_soon_view' ) );
+		add_filter( 'users_list_table_query_args', array( $this, 'filter_expiring_soon_users' ) );
 
 		// AJAX handlers for auto-deletion loopback.
 		add_action( 'wp_ajax_nopriv_expiryflow_process_auto_deletion', array( $this, 'process_auto_deletion' ) );
@@ -456,6 +458,101 @@ class UserManagement {
 		}
 
 		return $value;
+	}
+
+	/**
+	 * Add an upcoming-expiry link to the Users list views.
+	 *
+	 * @param array $views Existing view links.
+	 * @return array
+	 */
+	public function add_expiring_soon_view( array $views ): array {
+		$is_current = $this->is_expiring_soon_view();
+
+		if ( $is_current ) {
+			// Core marks "All" as current when no role is selected.
+			foreach ( $views as $key => $link ) {
+				$views[ $key ] = str_replace( ' class="current" aria-current="page"', '', $link );
+			}
+		}
+
+		$url = add_query_arg( 'expiryflow_view', 'soon', admin_url( 'users.php' ) );
+		$views['expiryflow_soon'] = sprintf(
+			'<a href="%s"%s>%s</a>',
+			esc_url( $url ),
+			$is_current ? ' class="current" aria-current="page"' : '',
+			esc_html__( 'Expiring soon (7 days)', 'expiryflow' )
+		);
+
+		return $views;
+	}
+
+	/**
+	 * Limit the Users list to active, non-administrator accounts expiring soon.
+	 *
+	 * @param array $args Users list query arguments.
+	 * @return array
+	 */
+	public function filter_expiring_soon_users( array $args ): array {
+		if ( ! $this->is_expiring_soon_view() ) {
+			return $args;
+		}
+
+		$today = current_datetime();
+		// Today and the following six calendar dates make up the seven-day view.
+		$meta_query = array(
+			'relation' => 'AND',
+			array(
+				'key'     => EXPIRYFLOW_USER_EXPIRY_DATE,
+				'value'   => array( $today->format( 'Y-m-d' ), $today->modify( '+6 days' )->format( 'Y-m-d' ) ),
+				'compare' => 'BETWEEN',
+				'type'    => 'DATE',
+			),
+			array(
+				'relation' => 'OR',
+				array(
+					'key'     => EXPIRYFLOW_USER_ACCOUNT_STATUS,
+					'compare' => 'NOT EXISTS',
+				),
+				array(
+					'key'     => EXPIRYFLOW_USER_ACCOUNT_STATUS,
+					'value'   => EXPIRYFLOW_STATUS_ACTIVE,
+					'compare' => '=',
+				),
+			),
+		);
+
+		if ( ! empty( $args['meta_query'] ) && is_array( $args['meta_query'] ) ) {
+			// Preserve any existing query as a group, including its OR relation.
+			$meta_query[] = $args['meta_query'];
+		}
+
+		// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Needed to filter stored expiry and status metadata.
+		$args['meta_query'] = $meta_query;
+		$args['role__not_in'] = array_unique(
+			array_merge(
+				isset( $args['role__not_in'] ) ? (array) $args['role__not_in'] : array(),
+				array( 'administrator' )
+			)
+		);
+
+		return $args;
+	}
+
+	/**
+	 * Whether the upcoming-expiry view was selected on the site Users screen.
+	 *
+	 * @return bool
+	 */
+	private function is_expiring_soon_view(): bool {
+		$screen = get_current_screen();
+		if ( ! $screen || 'users' !== $screen->id ) {
+			return false;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only Users list filter.
+		$view = isset( $_GET['expiryflow_view'] ) ? wp_unslash( $_GET['expiryflow_view'] ) : '';
+		return is_string( $view ) && 'soon' === sanitize_key( $view );
 	}
 
 	/**
